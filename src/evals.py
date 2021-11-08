@@ -9,6 +9,9 @@ def construct_loss_(path,refs,vs,variances):
     var_error = ( variances*(path[:,:2]-refs[:,:2]).pow(2).sum(dim=1) ).sum()
     return mean_error + cv*var_error
 
+def construct_loss_2(path,refs,vs):
+    mean_error = error_deviation_parallel_(path,refs,ql,qc)
+    return mean_error
 
 def error_deviation_parallel_(states,refs,ql,qc):
     x,y = states[:,0],states[:,1]
@@ -17,7 +20,6 @@ def error_deviation_parallel_(states,refs,ql,qc):
     ec =  gy*(x-cx) - gx*(y-cy)
     err = ql*el.pow(2).sum()+qc*ec.pow(2).sum()
     return err
-
 
 def search_(state,waypoints,_indx,L):
     x,y = state[0],state[1]

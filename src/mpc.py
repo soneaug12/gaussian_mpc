@@ -19,6 +19,8 @@ class GP_MPC:
         if len(dt)==1:
             dt = torch.ones(self.len_horizon).view(-1,1)*dt
         opt =  torch.optim.Adam([controls],lr=learning_rate)
+        
+        # refは参照点。speed間隔刻みで、horizonステップ数分。初期値はstartでずらしていく
         refs = self.waypoints[vs[1:]+start]
         _,sigma_init = self.gp_propagator.initialize(state_init,controls[0])
 
@@ -33,26 +35,29 @@ class GP_MPC:
                 for t in range(self.len_horizon):
                     state,sigma = self.gp_propagator.forward(state,controls_dt[t],sigma,True)
                     sigma_xy = sigma[:dim_s,:dim_s]
-                    _,eigs,_ = sigma.svd()
+                    _,eigs,_ = sigma.svd() # svdは特異値分解
                     var = eigs[0]                   # the largest eigenvalue of sigma_xy 
                     path.append(state.view(1,-1))
                     vars_.append(var.view(1))
                 path = torch.cat(path,dim=0)
                 vars_ = torch.cat(vars_,dim=0)
             else:
+                # horizonステップ分だけ運動方程式を更新
                 for t in range(self.len_horizon):
                     state,_ = self.gp_propagator.forward(state,controls_dt[t],None,False)
                     path.append(state.view(1,-1))
                 path = torch.cat(path,dim=0)
+
+            # MPCの最適化
             opt.zero_grad()
             loss = self.evaluate(path,refs,vs,_vars) 
             loss.backward(retain_graph=True)
             opt.step()
             opt.zero_grad()
-            '''
-            if epoch % 500 ==0:
-                print(loss.data.numpy())
-            '''
+            
+            # if epoch % 500 ==0:
+            #     print(loss.data.numpy())
+
         controls_dt = torch.cat([controls,dt],dim=1)
         return controls_dt,path,vars_.data.clone()
     
@@ -83,7 +88,8 @@ class MPC:
             state  = state_init
             path = []
             for t in range(self.len_horizon):
-                state = self.model(state,controls_dt[t])
+                # state = self.model(state,controls_dt[t])
+                state = self.model.forward(state,controls_dt[t])
                 path.append(state.view(1,-1))
             path = torch.cat(path,dim=0)
      
@@ -92,7 +98,7 @@ class MPC:
             loss = self.evaluate(path,refs,vs) 
             loss.backward()
             opt.step()
-            if epoch % 500 ==0:
-                print(loss.data.numpy())
+            # if epoch % 500 ==0:
+                # print(loss.data.numpy())
         controls_dt = torch.cat([controls,dt],dim=1)
         return controls_dt,path    

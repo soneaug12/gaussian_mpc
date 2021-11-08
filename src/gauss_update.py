@@ -35,23 +35,28 @@ class gaussian_propagator:
         self.sigma_w = sigma_w 
 
     def initialize(self,state,control):
-        z = (s2z@state)
+        z = (s2z@state) # yaw, v, delta, aの4状態
         #state = torch.nn.Parameter( state ).view(-1)
         control = control.data.clone().view(-1)
         gp_indata = torch.cat([z,control],dim=0)
      
+        # 今回データから予測値を計算
         myu,sigma = self.gp_model(gp_indata,requires_sigma=True)
      
+        # myu, sigmaを行列の3,4番目に反映
         return v2s@myu,v2s@sigma@s2v
 
     def forward(self,state,control_dt,_sigma,requires_sigma=False):
         control = control_dt[:dim_c]
-        z = (s2z@state)
+        z = (s2z@state) # yaw, v, delta, aの4状態
         #state = torch.nn.Parameter( state ).view(-1)
         #control = control.data.clone().view(-1)
         gp_indata = torch.cat([z,control],dim=0)
         f = self.p_model(state,control_dt)
         g,_ = self.gp_model(gp_indata,requires_sigma=False)
+
+        # GPRはノミナルモデルとの誤差を推定
+        # ノミナルモデルに足す事で誤差補償
         myu = f + v2s@g
         sigma = None 
         if requires_sigma:
