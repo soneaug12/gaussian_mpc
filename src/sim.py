@@ -6,9 +6,48 @@ from gauss_update import *
 from kinetic_model import *
 import cubic_spline_planner
 
-
 import matplotlib.pyplot as plt
 import numpy as np
+
+class deviation_error_(torch.autograd.Function):
+    
+    @staticmethod
+    def forward(ctx,states,vs,waypoints,start):
+        states = states.data.clone()
+        states.requires_grad = True
+        
+        _range = torch.arange(len(states)).view(-1,1)
+        range_ = _range.t()
+        mask = (_range<=range_).float()
+        
+        inds = (mask.t()@vs.view(-1,1)).view(-1).round().long()+start
+        #print(inds)
+        #print([vs[:i+1].sum().data+start for i in range(len(vs))])
+        dw = waypoints[inds+1]-waypoints[inds]
+        
+        refs = waypoints[inds].data.clone().requires_grad_()
+        with torch.enable_grad():
+            # error = error_deviation_parallel_(states,refs,inds,ql,qc)
+            error = error_deviation_parallel_(states,refs,ql,qc)
+            de_s,de_w = torch.autograd.grad(error,[states]+[refs],grad_outputs=None,retain_graph=False,create_graph=False)
+ 
+        ctx.save_for_backward(states.data.clone(),vs.data.clone(),waypoints,de_s.data.clone(),de_w.data.clone(),dw.data.clone())
+        #print(states.size(),vs.size(),waypoints.size(),de_s.size(),de_w.size(),dw.data.size())
+        
+        return error.data.clone()
+    
+    @staticmethod
+    def backward(ctx,de):
+        states,vs,waypoints,de_s,de_w,dw = ctx.saved_tensors
+         
+        de_theta = (de_w@dw.t()).diag().view(-1,1)
+        _range = torch.arange(len(states)).view(-1,1)
+        range_ = _range.t()
+        mask = (_range<=range_).float()
+        
+        de_v = (mask@de_theta).view(-1)
+        #print(de_v)
+        return de_s.data.clone(),de_v.data.clone(),None,None
 
 ax = [0.0, 6.0, 12.5, 10.0, 7.5, 3.0, -1.0]
 ay = [0.0, -3.0, -5.0, 6.5, 3.0, 5.0, -2.0]

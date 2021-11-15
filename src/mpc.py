@@ -1,8 +1,11 @@
 import torch
+import numpy as np
+import matplotlib.pyplot as plt
+from IPython.display import display, clear_output
 
 learning_rate=0.01
 dim_s=2
-EMAX=1000
+EMAX=100#1000
 
 class GP_MPC:
     def __init__(self,gp_propagator,evaluate,len_horizon,waypoints):
@@ -19,11 +22,20 @@ class GP_MPC:
         if len(dt)==1:
             dt = torch.ones(self.len_horizon).view(-1,1)*dt
         opt =  torch.optim.Adam([controls],lr=learning_rate)
-        
+
         # refは参照点。speed間隔刻みで、horizonステップ数分。初期値はstartでずらしていく
-        refs = self.waypoints[vs[1:]+start]
+        # refs = self.waypoints[vs[1:]+start]
+        if (start+self.len_horizon) <= len(self.waypoints[:,0])-1:
+            refs = self.waypoints[vs[1:]+start]
+        else:
+            new_waypoints = torch.cat((self.waypoints, self.waypoints))
+            refs = new_waypoints[vs[1:]+start]
+        print(start)
+
         _,sigma_init = self.gp_propagator.initialize(state_init,controls[0])
 
+        idx = np.arange(EMAX)
+        ans = np.zeros(len(idx))
         for epoch in range(EMAX):
             controls_dt = torch.cat([controls,dt],dim=1)
             state  = state_init
@@ -51,12 +63,10 @@ class GP_MPC:
             # MPCの最適化
             opt.zero_grad()
             loss = self.evaluate(path,refs,vs,_vars) 
+            ans[epoch] = loss.data.numpy()
             loss.backward(retain_graph=True)
             opt.step()
             opt.zero_grad()
-            
-            # if epoch % 500 ==0:
-            #     print(loss.data.numpy())
 
         controls_dt = torch.cat([controls,dt],dim=1)
         return controls_dt,path,vars_.data.clone()
@@ -71,7 +81,6 @@ class MPC:
         self.len_horizon = len_horizon
         self.model = model
         self.evaluate = evaluate
-
         
     def run(self,state_init,controls_init,vs,dt,start):
         start = torch.LongTensor([start])
@@ -81,7 +90,23 @@ class MPC:
         if len(dt)==1:
             dt = torch.ones(self.len_horizon).view(-1,1)*dt
         opt =  torch.optim.Adam([controls],lr=learning_rate)
-        refs = self.waypoints[vs[1:]+start]
+
+        # refs = self.waypoints[vs[1:]+start]
+        if (start+self.len_horizon) <= len(self.waypoints[:,0])-1:
+            refs = self.waypoints[vs[1:]+start]
+        else:
+            new_waypoints = torch.cat((self.waypoints, self.waypoints))
+            refs = new_waypoints[vs[1:]+start]
+
+        idx = np.arange(EMAX)
+        ans = np.zeros(len(idx))
+
+        # fig2, ax2 = plt.subplots(figsize=(20,8))
+        # x_ = np.arange(0,self.len_horizon)
+        # y_ = np.arange(0,self.len_horizon)
+        # l1, = ax2.plot(x_, y_, 'o', color='green')
+        # l2, = ax2.plot(self.waypoints[:,0], self.waypoints[:,1], color='k')
+        # ax2.set_aspect('equal', 'box')
 
         for epoch in range(EMAX):
             controls_dt = torch.cat([controls,dt],dim=1)
@@ -98,7 +123,12 @@ class MPC:
             loss = self.evaluate(path,refs,vs) 
             loss.backward()
             opt.step()
-            # if epoch % 500 ==0:
-                # print(loss.data.numpy())
+            ans[epoch] = loss.data.numpy()
+
+            # l1.set_data(path[:,0].detach().numpy(), path[:,1].detach().numpy())
+            # clear_output(wait=True)
+            # display(fig2)
+            # plt.pause(0.01)
         controls_dt = torch.cat([controls,dt],dim=1)
-        return controls_dt,path    
+        # plt.close()
+        return controls_dt,path
