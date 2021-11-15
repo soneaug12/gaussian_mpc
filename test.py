@@ -70,10 +70,15 @@ x_ = np.arange(0,10)
 y_ = np.arange(0,10)*0
 _x = np.arange(0,10)
 _y = np.arange(0,10)*0
-l1, = ax.plot(_x,   _y, 'o', color='blue')
-l2, = ax.plot(x_,   y_, 'o', color='green')
 l3, = ax.plot(xs2, ys2, '--', color='red')
+l1, = ax.plot(_x,   _y, 'o', color='blue')
+l2, = ax.plot(x_,   y_, '-o', color='green', linewidth=2)
 ax.set_aspect('equal', 'box')
+ax.set_xlim([-30, 30])
+ax.set_xticks(np.linspace(-35, 35, 15))
+ax.set_ylim([-5, 25])
+ax.set_yticks(np.linspace(-5, 25, 7))
+ax.grid()
 
 # initialize estimate of uncertainty of control accuracy
 vars0 = torch.ones(len_horizon)*0.1
