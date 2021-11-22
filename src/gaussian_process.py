@@ -23,7 +23,7 @@ class GaussianProcess:
             self.kernel = kernel
         else:
             self.kernel = RBF_kernel
-            
+
     def train(self,x,y):
             self.train_size = x.size()[0]
             self.train_x = x

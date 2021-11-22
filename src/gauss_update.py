@@ -1,4 +1,5 @@
 import torch
+import math
 
 noise = 0.1
 sigma_w = 0.01
@@ -15,7 +16,6 @@ v2s = torch.cat([torch.zeros(dim_x,dim_v),torch.eye(dim_v),torch.zeros(dim_a,dim
 s2v = v2s.t()
 z2s = torch.cat([torch.zeros(dim_x,dim_z),torch.eye(dim_z)],dim=0)
 s2z = z2s.t()
-
 
 class GP_test:
     def __init__(self,dim):
@@ -47,6 +47,16 @@ class gaussian_propagator:
         return v2s@myu,v2s@sigma@s2v
 
     def forward(self,state,control_dt,_sigma,requires_sigma=False):
+        # 複数周回対応するために学習条件の[0, 2*pi]に補正
+        # state[2] = state[2] % (2*math.pi)
+
+        # 半周以上回ったら有効化
+        gain = 0
+        if gain == 0 and state[2] > 2*math.pi-0.1:
+            gain = 1.0
+        state[2] = state[2] % (2*math.pi)
+
+
         control = control_dt[:dim_c]
         z = (s2z@state) # yaw, v, delta, aの4状態
         #state = torch.nn.Parameter( state ).view(-1)
@@ -57,13 +67,14 @@ class gaussian_propagator:
 
         # GPRはノミナルモデルとの誤差を推定
         # ノミナルモデルに足す事で誤差補償
-        myu = f + v2s@g
+        myu = f + v2s@g*gain
         sigma = None 
         if requires_sigma:
             df = self.differentiate(state,control_dt,type='p')
             dg = self.differentiate(state,control,type='gp')
             dg = dg@s2z
             sigma = self.construct_sigma(df,dg,_sigma,sigma_w)
+
         return myu,sigma
         
     def construct_sigma(self,df,dg,sigma_x,sigma_w):

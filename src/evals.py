@@ -53,25 +53,35 @@ def search_(state,waypoints,_indx,L):
     return indx
 
 
-def search_2(state,waypoints,_indx,L):
+def search_2(state,waypoints,_idx,L):
     x,y = state[0],state[1]
     cx,cy= waypoints[:,0],waypoints[:,1]
-    if (_indx+L) <= len(cx)-1:
-        dx = x-cx[_indx:_indx+L]
-        dy = y-cy[_indx:_indx+L]
+    if (_idx+L) <= len(cx)-1:
+        dx = x-cx[_idx:(_idx+L)]
+        dy = y-cy[_idx:(_idx+L)]
         d2 = dx.pow(2) + dy.pow(2)
-        indx = torch.argmin(d2) + _indx
-        indx2 = indx
+        idx = _idx + torch.argmin(d2)
+        idx2 = idx
     else:
         cx2 = torch.cat([cx, cx])
         cy2 = torch.cat([cy, cy])
-        dx = x-cx2[_indx:_indx+L]
-        dy = y-cy2[_indx:_indx+L]
+        dx = x-cx2[_idx:(_idx+L)]
+        dy = y-cy2[_idx:(_idx+L)]
         d2 = dx.pow(2) + dy.pow(2)
-        indx = torch.argmin(d2) + _indx
-        if indx >= len(cx):
-            indx2 = indx - len(cx)
+        idx = _idx + torch.argmin(d2)
+        if idx >= len(cx):
+            idx2 = idx - len(cx)
         else:
-            indx2 = indx
+            idx2 = idx
 
-    return indx2
+    if idx2 >= len(cx)-1:
+        idx3 = idx2 - 1
+    else:
+        idx3 = idx2
+
+    a =   cy[idx3+1] - cy[idx3]
+    b = - cx[idx3+1] + cx[idx3]
+    c =   cx[idx3+1] * cy[idx3] - cx[idx3] * cy[idx3+1]
+    yofs =  (a*x + b*y + c) / torch.sqrt(a**2 + b**2)
+
+    return idx2, yofs
