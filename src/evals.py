@@ -19,11 +19,6 @@ def construct_loss_3_gp(path, refs, vs, variances):
     return mean_error + cv*var_error
 
 def construct_loss_3(path,refs,vs):
-    # x,y,v = path[:,0], path[:,1], path[:,3]
-    # cx,cy,gx,gy,cv = refs[:,0],refs[:,1],refs[:,2],refs[:,3],refs[:,4]
-    # ec =  gy*(x-cx) - gx*(y-cy)
-    # delta_v = v - cv
-    # err = qc*ec.pow(2).sum() + ql*delta_v.pow(2).sum()
     mean_error = error_deviation_parallel_2(path,refs,ql,qc)
     return mean_error
 
@@ -35,6 +30,8 @@ def error_deviation_parallel_(states,refs,ql,qc):
     err = ql*el.pow(2).sum()+qc*ec.pow(2).sum()
     return err
 
+# TODO: 今の評価関数は横方向誤差があると速度も調整して吸収しようとするため、
+#       結果的に速度誤差も増えてしまう
 def error_deviation_parallel_2(states,refs,ql,qc):
     x,y,v = states[:,0], states[:,1], states[:,3]
     cx,cy,gx,gy,cv = refs[:,0],refs[:,1],refs[:,2],refs[:,3],refs[:,4]

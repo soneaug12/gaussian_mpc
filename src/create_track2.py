@@ -12,43 +12,37 @@ torch.set_printoptions(linewidth=200)
 rad2deg = 180/np.pi
 deg2rad = np.pi/180
 
-def get_track(plot_on=False):
-    ratio = 1
+def chirp_sin(t, tvec, fvec):
+    f = np.interp(t,tvec, fvec)
+    y = np.zeros_like(t)
+
+    x = 0
+    for i in range(len(t)):
+        if i == 0:
+            dt = t[i+1] - t[i]
+        else:
+            dt = t[i] - t[i-1]
+        x += 2*np.pi*f[i]*dt
+        y[i] = np.sin(x)
     
-    # cs_max = 161.677
-    cs_max = 161.637
-    # cs_max = 161.7245*ratio
+    return f, y
+
+def get_track2(plot_on=False):
+    
+    cs_max = 800#1000
     ds = 0.01
     Ns = int(np.floor(cs_max/ds))+1
     cs = np.linspace(0, cs_max,num=Ns)
     ks = np.zeros_like(cs)
-    c0 = (20-2.75)*ratio
-    c1 = c0+10*ratio
-    c2 = c1+30*ratio
-    c3 = c2+20*ratio
-    c4 = c3+7.1681469*ratio
-    c5 = c4+20*ratio
-    c6 = c5+30*ratio
-    c7 = c6+10*ratio
-    k0 = 0.1/ratio
-    for i in range(len(cs)):
-        if cs[i] <= c0:
-            ks[i] = 0
-        elif cs[i] <= c1:
-            ks[i] = k0*(cs[i]-c0)/(c1-c0)
-        elif cs[i] <= c2:
-            ks[i] = k0
-        elif cs[i] <= c3:
-            ks[i] = -k0*(cs[i]-(c2+c3)/2)/((c3-c2)/2)
-        elif cs[i] <= c4:
-            ks[i] = -k0
-        elif cs[i] <= c5:
-            ks[i] = k0*(cs[i]-(c4+c5)/2)/((c5-c4)/2)
-        elif cs[i] <= c6:
-            ks[i] = k0
-        elif cs[i] <= c7:
-            ks[i] = -k0*(cs[i]-c7)/(c7-c6)
-    
+
+    # cs_vec = np.array([0,  200,  400,  600,  800,  1000])
+    # fs_vec = np.array([0, 0.015, 0.03, 0.015, 0.03,  0.015])
+    cs_vec = np.array([0,  200,  400,  600,  800,  1000])
+    fs_vec = np.array([0, 0.014, 0.020, 0.026, 0.032,  0.016])
+    f,ks = chirp_sin(cs, cs_vec, fs_vec)
+
+    ks = ks * 0.1
+
     phis = np.r_[0, np.cumsum(ks[:-1]*ds)]
     xs = np.r_[0, np.cumsum(ds*np.cos(phis[:-1]))]
     ys = np.r_[0, np.cumsum(ds*np.sin(phis[:-1]))]
@@ -145,9 +139,8 @@ def get_track(plot_on=False):
 
     return waypoints
 
-
 def main():
-    get_track(True)
+    get_track2(True)
 
 if __name__ == "__main__":
     main()

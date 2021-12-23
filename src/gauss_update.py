@@ -54,6 +54,7 @@ class gaussian_propagator:
         gain = 0
         if gain == 0 and state[2] > 2*math.pi-0.1:
             gain = 1.0
+        # gain = 1.0
         state[2] = state[2] % (2*math.pi)
 
 
